@@ -1,5 +1,5 @@
 /**
- * Module dependencies.
+ *Module dependencies.
  */
 var handlebars = require('express-handlebars');
 var bodyParser = require('body-parser');
