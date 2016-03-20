@@ -1,6 +1,8 @@
 /**
- *Module dependencies.
+ * Module dependencies.
  */
+require('newrelic');
+
 var handlebars = require('express-handlebars');
 var bodyParser = require('body-parser');
 var express = require('express');
@@ -24,9 +26,18 @@ var sass = require('node-sass-middleware');
 var _ = require('lodash');
 var http = require('http');
 var subdomain = require('express-subdomain');
-var multer  = require('multer')
-var upload = multer({ dest: 'uploads/' })
+var multer  = require('multer');
+var upload = multer({ dest: 'uploads/' });
+var rollbar = require('rollbar');
+var Analytics = require('./controllers/analytics');
+var Patient = require('./models/Patient');
 
+Analytics.startAnalytics();
+
+//var server = require('http').createServer(app);
+//var io = require('socket.io').listen(server);
+
+//server.listen(app.get('port'));
 /**
  * Load environment variables from .env file, where API keys and passwords are configured.
  *
@@ -34,15 +45,19 @@ var upload = multer({ dest: 'uploads/' })
  */
 dotenv.load();
 
+
 /**
  * Controllers (route handlers).
  */
 var homeController = require('./controllers/home');
 var userController = require('./controllers/user');
+var apiController = require('./controllers/api');
 var contactController = require('./controllers/contact');
 var employeeController = require('./controllers/employee');
 var patientController = require('./controllers/patient');
 var dashboardController = require('./controllers/dashboard');
+var appointmentController = require('./controllers/getAppointment');
+var restAPIController = require('./controllers/restapi');
 
 /**
  * API keys and Passport configuration.
@@ -54,10 +69,13 @@ var passportConf = require('./config/passport');
  */
 var app = express();
 
+var server = require('http').Server(app);
+var io = require('socket.io')(server);
+
 /**
  * Connect to MongoDB.
  */
-mongoose.connect('mongodb://admin:admin@ds061721.mongolab.com:61721/cse112nightowls');
+mongoose.connect(process.env.MONGODB || process.env.MONGOLAB_URI);
 mongoose.connection.on('error', function() {
   console.log('MongoDB Connection Error. Please make sure that MongoDB is running.');
   process.exit(1);
@@ -66,10 +84,12 @@ mongoose.connection.on('error', function() {
 /**
  * Express configuration.
  */
-app.set('port', 3000);
+app.set('port', process.env.PORT || 3000);
 app.engine('handlebars', handlebars({defaultLayout: 'layout'}));
 app.set('view engine', 'handlebars');
 app.set('views', __dirname + '/views');
+app.use(express.static(__dirname, '/js'));
+
 
 app.use(compress());
 app.use(sass({
@@ -88,9 +108,9 @@ app.use(cookieParser());
 app.use(session({
   resave: true,
   saveUninitialized: true,
-  secret: "process.env.SESSION_SECRET",
+  secret: process.env.SESSION_SECRET,
   store: new MongoStore({
-    url: "mongodb://admin:admin@ds061721.mongolab.com:61721/cse112nightowls",
+    url: process.env.MONGODB || process.env.MONGOLAB_URI,
     autoReconnect: true
   })
 }));
@@ -117,9 +137,7 @@ app.use(function(req, res, next) {
 });
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: 31557600000 }));
 
-//grabbing subdomain
-/* TODO: check if the account was verified */
-//app.use(subdomain('api', router));
+
 
 /**
  * Primary app routes.
@@ -148,6 +166,7 @@ app.post('/add_EmployeesCSV', upload.single('file'), employeeController.addEmplo
 app.get('/login_employee', employeeController.getEmployeeLogin);
 app.post('/login_employee', employeeController.postEmployeeLogin);
 app.delete('/delete/:id', employeeController.removeEmployee);
+app.post('/email_employee', employeeController.emailEmployee);
 
 app.post('/form', passportConf.isAuthenticated, userController.postUpdateForm);
 
@@ -162,9 +181,43 @@ app.get('/patients_mode', function(req, res){
 });
 
 app.get('/patient_queue', patientController.getPatients);
+app.post('/patient_queue', patientController.notifyPatients);
+app.delete('/delete_patient/:id', patientController.removePatient);
+
+
+// real time update patient queue
+io.on('connection', function (socket) {
+  socket.on('patientqueue', function(msg){
+    console.log('message: ' + msg);
+    Patient.find({subdomainurl: msg }, function (err, patients) {
+
+        if (err) { return next(err);  }
+        if(!patients) { return next(new Error('Error finding patients'));}
+        console.log(patients);
+        io.emit('queue',patients);
+    });
+
+
+    //io.emit('test','patients');
+
+
+  });
+
+  socket.on('disconnect', function(){
+    console.log('user disconnected');
+  });
+
+
+});
+
+
+
+
+app.delete('/removePatient/:id', patientController.removePatient);
 
 app.get('/dashboard_admin', dashboardController.getBusinessOwnerDashboard);
 app.get('/dashboard_employee', dashboardController.getEmployeeDashboard);
+app.get('/dashboard_peter', dashboardController.getPeterDashboard);
 
 app.get('/subdomain_login', function(req, res){
   res.render('subdomain_login', { employee: req.employee });
@@ -175,8 +228,22 @@ app.post('/subdomain_login', employeeController.postSubdomain);
 /**
  * API examples routes.
  */
+app.get('/deleteEmployee', restAPIController.deleteEmployee);
+app.get('/deletePatient', restAPIController.deletePatient);
+app.get('/checkoutPatient', restAPIController.checkoutPatient);
+app.post('/createPatient', restAPIController.createPatient);
+app.post('/createEmployee', restAPIController.createEmployee);
+app.get('/getPatients', restAPIController.getPatients);
+app.get('/getEmployees', restAPIController.getEmployees);
 
-app.get('/viewbusinesses', userController.viewBusinesses);
+/**
+* Slack slash commands
+*/
+app.get('/getAppointments', restAPIController.getPatients);
+app.get('/removePatient', restAPIController.deletePatient);
+app.get('/getEmployee', restAPIController.getEmployees);
+
+
 
 app.get('/Billing_info', function(req, res){
   res.render('Billing_info', { user: req.user });
@@ -185,8 +252,10 @@ app.get('/add_employees', function(req, res){
   res.render('add_employees', { user: req.user });
 });
 app.get('/form', function(req, res){
-  res.render('form', { user: req.user });
+  res.render('form', { user: req.user, layout: 'navigation_admin' });
 });
+
+
 app.get('/management', function(req, res){
   res.render('management', { user: req.user });
 });
@@ -203,41 +272,35 @@ app.get('/settings', function(req, res){
   res.render('settings', { user: req.user });
 });
 
-app.get('/viewform', function(req, res){
-  res.render('viewform', { form: req.user.form });
+
+app.get('/settings_p', function(req, res){
+  res.render('settings_p', { user: req.user });
 });
 
-// Twilio Credentials 
-var accountSid = 'AC3008bf6b293131cc5a4c8410a1a5ceb8'; 
-var authToken = '63d3c91c8c7f774d0733ea16ccea533b'; 
- 
-//require the Twilio module and create a REST client 
-var client = require('twilio')(accountSid, authToken); 
-
-  app.post('/test', function(req, res) {
-        console.log(accountSid);
-        console.log(authToken);
-      client.sendSms({ 
-        body: req.body.message,
-        to: req.body.to,
-        from: "+18583467675"
-      }, function(err, message) { 
-        console.log(message); 
-        if(err){
-          console.log(err.message);
-          console.log(err.message); 
-          res.render('test', { messageinfo: "fail sent" });
-        }
-      });
-
-      res.render('test', { messageinfo: " sent" });
-
-  });
+//owner update
+app.post('/settings',passportConf.isAuthenticated, userController.postUpdateProfile );
+app.post('/updatepassword', passportConf.isAuthenticated, userController.postUpdatePassword);
+app.post('/delete', passportConf.isAuthenticated, userController.postDeleteAccount);
 
 
+//employee update
 
-app.get('/test', function(req, res){
-  res.render('test', { user: req.user });
+app.post('/employeeUpdate',passportConf.isAuthenticated, employeeController.postUpdateProfile );
+app.post('/updateemployeepassword', passportConf.isAuthenticated, employeeController.postUpdatePassword);
+
+
+app.get('/viewform', function(req, res){
+  res.render('viewform', { form: req.user.form, layout: 'navigation_admin' });
+});
+
+
+/**
+ * OAuth authentication routes. (Sign in)
+ */
+
+app.get('/auth/facebook', passport.authenticate('facebook', { scope: ['email', 'user_location'] }));
+app.get('/auth/facebook/callback', passport.authenticate('facebook', { failureRedirect: '/login' }), function(req, res) {
+  res.redirect(req.session.returnTo || '/');
 });
 
 
@@ -248,14 +311,25 @@ app.get('/test', function(req, res){
 /**
  * Error Handler.
  */
- 
+
+// Use the rollbar error handler to send exceptions to your rollbar account
+app.use(rollbar.errorHandler('a816c3c191b74a40b6ea6afa3e715d8f'));
+
+var options = {
+  // Call process.exit(1) when an uncaught exception occurs but after reporting all
+  // pending errors to Rollbar.
+  //
+  // Default: false
+  exitOnUncaughtException: true
+};
+rollbar.handleUncaughtExceptions("a816c3c191b74a40b6ea6afa3e715d8f", options);
+
 app.use(errorHandler());
 
 /**
  * Start Express server.
  */
-app.listen(app.get('port'), function(){
+server.listen(app.get('port'), function(){
   console.log(("Express server listening on port " + app.get('port')))
 });
-
 module.exports = app;

@@ -7,14 +7,16 @@ var employeeSchema = new mongoose.Schema({
     phone_number: String, /* or Number */
     email: { type: String, unique: true, lowercase: true },
     password: String,
+    lastLoginDate: Date,
     subdomainurl: String,
+    picture: String,
     _admin_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: true }
 });
 
 /**
  * Password hash middleware.
  */
-employeeSchema.pre('save', function(next) {
+ employeeSchema.pre('save', function(next) {
     var employee = this;
     if (!employee.isModified('password')) {
         return next();
@@ -36,7 +38,7 @@ employeeSchema.pre('save', function(next) {
 /**
  * Helper method for validating user's password.
  */
-employeeSchema.methods.comparePassword = function(candidatePassword, cb) {
+ employeeSchema.methods.comparePassword = function(candidatePassword, cb) {
     bcrypt.compare(candidatePassword, this.password, function(err, isMatch) {
         if (err) {
             return cb(err);
