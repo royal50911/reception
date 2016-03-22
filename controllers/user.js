@@ -4,7 +4,7 @@ var crypto = require('crypto');
 var nodemailer = require('nodemailer');
 var passport = require('passport');
 var User = require('../models/User');
-
+var fs = require('fs');
 var Logger = require('le_node');
 var logger = new Logger({
   token:'4ed0e98c-c21f-42f0-82ee-0031f09ca161'
@@ -105,6 +105,57 @@ var analytics = require('../controllers/analytics');
     title: 'Create Account'
   });
 };
+
+
+/**
+upload
+ */
+ exports.upload = function(req, res) {
+    // get the temporary location of the file
+    console.log("testing");
+    console.log(req.file);
+    console.log(req.body);
+    var tmp_path = req.file.path;
+    // set where the file should actually exists - in this case it is in the "images" directory
+    var target_path = './public/img/' + req.file.originalname;
+    /** A better way to copy the uploaded file. **/
+  var src = fs.createReadStream(tmp_path);
+  var dest = fs.createWriteStream(target_path);
+  src.pipe(dest);
+  src.on('end', function() { 
+    console.log("success"); });
+  src.on('error', function(err) { 
+    console.log("failure"); });
+
+
+    User.findById(req.user.id, function(err, user) {
+    console.log(req.user.id);
+    if (err) {
+      // Send logs to logentries
+      console.log("Edit profile failed: " + err);
+
+      return next(err);
+    }
+    user.picture = target_path || '';
+    user.save(function(err) {
+      if (err) {
+        // Send logs to logentries
+        console.log("Edit profile failed: " + err);
+        return next(err);
+      }
+      // Send logs to logentries
+      console.log("Edit profile Success");
+
+      req.flash('success', { msg: 'Profile information updated.' });
+      res.redirect('/settings');
+    });
+  });
+
+
+
+};
+
+
 
 /**
  * POST /signup
@@ -255,7 +306,7 @@ var analytics = require('../controllers/analytics');
  * Update profile information.
  */
  exports.postUpdateProfile = function(req, res, next) {
-  console.log("update profile");
+  console.log(req.body);
   User.findById(req.user.id, function(err, user) {
     console.log(req.user.id);
     if (err) {

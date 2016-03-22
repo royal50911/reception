@@ -282,6 +282,8 @@ app.post('/settings',passportConf.isAuthenticated, userController.postUpdateProf
 app.post('/updatepassword', passportConf.isAuthenticated, userController.postUpdatePassword);
 app.post('/delete', passportConf.isAuthenticated, userController.postDeleteAccount);
 
+app.post('/file-upload', upload.single('thumbnail'),userController.upload);
+
 
 //employee update
 
