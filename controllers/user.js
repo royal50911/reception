@@ -115,17 +115,17 @@ upload
     console.log("testing");
     console.log(req.file);
     console.log(req.body);
-    var tmp_path = req.file.path;
-    // set where the file should actually exists - in this case it is in the "images" directory
-    var target_path = './public/img/' + req.file.originalname;
-    /** A better way to copy the uploaded file. **/
-  var src = fs.createReadStream(tmp_path);
-  var dest = fs.createWriteStream(target_path);
-  src.pipe(dest);
-  src.on('end', function() { 
-    console.log("success"); });
-  src.on('error', function(err) { 
-    console.log("failure"); });
+  //   var tmp_path = req.file.path;
+  //   // set where the file should actually exists - in this case it is in the "images" directory
+  //   var target_path = './public/img/' + req.file.originalname;
+  //   /** A better way to copy the uploaded file. **/
+  // var src = fs.createReadStream(tmp_path);
+  // var dest = fs.createWriteStream(target_path);
+  // src.pipe(dest);
+  // src.on('end', function() { 
+  //   console.log("success"); });
+  // src.on('error', function(err) { 
+  //   console.log("failure"); });
 
 
     User.findById(req.user.id, function(err, user) {
@@ -136,7 +136,7 @@ upload
 
       return next(err);
     }
-    user.picture = target_path || '';
+    user.picture = req.file.path || '';
     user.save(function(err) {
       if (err) {
         // Send logs to logentries

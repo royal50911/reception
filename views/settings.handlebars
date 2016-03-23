@@ -164,24 +164,24 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label for="website" class="col-sm-2 control-label">Picture URL</label>
-                                <div class="col-sm-4">
-                                    <input type="text" name="photo" id="photo" value="{{user.picture}}"class="form-control">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="logo" class="col-sm-2 control-label">User Photo </label>
-                                <div class="col-sm-4"><img src="{{user.picture}}" width="100" height="100" class="profile"></div>
-                            </div>
-                            <div class="form-group">
                                 <div class="col-sm-offset-2 col-sm-4">
                                     <button type="submit" class="btn btn btn-primary"><i class="fa fa-pencil"></i>Update Profile
                                     </button>
                                 </div>
                             </div>
                         </form>
-
-                        
+                        <form method="post"  action="/employee-update-pic" enctype="multipart/form-data" class="form-horizontal">
+                                <div class="form-group">
+                                    <label for="logo" class="col-sm-2 control-label">User Photo </label>
+                                    <div class="col-sm-4"><img src="{{user.picture}}" width="100" height="100"></div>
+                                </div>
+                                <div class="form-group">
+                                    <input class="btn btn-info" type="file" name="thumbnail" id= "thumbnail" class="form-group">
+                                </div>
+                                <div class="form-group">
+                                    <input class="btn btn-danger" type="submit" value="Update Your Photo" class="form-group">
+                                </div>
+                        </form>
 
                         <div class="page-header">
                             <h3>Change Password</h3></div>
@@ -247,16 +247,6 @@
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label for="website" class="col-sm-2 control-label">Picture URL</label>
-                                    <div class="col-sm-4">
-                                        <input type="text" name="photo" id="photo" value="{{user.picture}}"class="form-control">
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="logo" class="col-sm-2 control-label">User Photo </label>
-                                    <div class="col-sm-4"><img src="{{user.picture}}" width="100" height="100" class="profile"></div>
-                                </div>
-                                <div class="form-group">
                                     <div class="col-sm-offset-2 col-sm-4">
                                         <button type="submit" class="btn btn btn-primary"><i class="fa fa-pencil"></i>Update Profile
                                         </button>
@@ -264,21 +254,17 @@
                                 </div>
                             </form>
 
-                            <form method="post"  action="/file-upload" enctype="multipart/form-data">
+                            <form method="post"  action="/owner-update-pic" enctype="multipart/form-data" class="form-horizontal">
                                 <div class="form-group">
                                     <label for="logo" class="col-sm-2 control-label">User Photo </label>
-                                    <div class="col-sm-4"><img src="public/img/338221-background-image.jpg" width="100" height="100" class="profile"></div>
+                                    <div class="col-sm-4"><img src="{{user.picture}}" width="100" height="100"></div>
                                 </div>
                                 <div class="form-group">
-                                <input type="file" name="thumbnail" id= "thumbnail" class="form-control">
+                                    <input class="btn btn-info" type="file" name="thumbnail" id= "thumbnail">
                                 </div>
                                 <div class="form-group">
-                                    <label for="name" class="col-sm-2 control-label">User ID</label>
-                                    <div class="col-sm-4">
-                                        <input type="text" name="userId" id="userId" value="{{user.id}}" class="form-control" readonly>
-                                    </div>
+                                    <input class="btn btn-danger"  type="submit" value="Update Your Photo">
                                 </div>
-                                <input type="submit">
                             </form>
 
 

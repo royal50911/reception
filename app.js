@@ -282,14 +282,14 @@ app.post('/settings',passportConf.isAuthenticated, userController.postUpdateProf
 app.post('/updatepassword', passportConf.isAuthenticated, userController.postUpdatePassword);
 app.post('/delete', passportConf.isAuthenticated, userController.postDeleteAccount);
 
-app.post('/file-upload', upload.single('thumbnail'),userController.upload);
+app.post('/owner-update-pic', upload.single('thumbnail'),userController.upload);
 
 
 //employee update
 
 app.post('/employeeUpdate',passportConf.isAuthenticated, employeeController.postUpdateProfile );
 app.post('/updateemployeepassword', passportConf.isAuthenticated, employeeController.postUpdatePassword);
-
+app.post('/employee-update-pic', upload.single('thumbnail'),employeeController.upload);
 
 app.get('/viewform', function(req, res){
   res.render('viewform', { form: req.user.form, layout: 'navigation_admin' });
